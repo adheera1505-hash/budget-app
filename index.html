@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Tidewise Budget</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#EDF3F2;--card:#fff;--ink:#0F2A2E;--mute:#5B7377;--line:#D3E0DE;--lag:#1B7F8C;--out:#D6455D;--in:#2E8F5F;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0B1D20;--card:#12292D;--ink:#E6F1EF;--mute:#8FA9AC;--line:#214045;--lag:#4FC1CF;--out:#FF7A8E;--in:#5CD39A;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0B1D20;--card:#12292D;--ink:#E6F1EF;--mute:#8FA9AC;--line:#214045;--lag:#4FC1CF;--out:#FF7A8E;--in:#5CD39A;color-scheme:dark}
+*{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Bricolage Grotesque",system-ui,-apple-system,Segoe UI,sans-serif;line-height:1.4}
+main{max-width:560px;margin:0 auto;padding:16px 16px 96px}
+h1{font-size:15px;font-weight:600;margin:0;color:var(--mute)}
+.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.mo{display:flex;align-items:center;gap:6px}
+button{font:inherit;color:inherit;cursor:pointer}
+.ic{background:var(--card);border:1px solid var(--line);border-radius:10px;width:36px;height:36px}
+.hero{background:var(--ink);color:var(--bg);border-radius:22px;padding:20px}
+.hero small{opacity:.7}
+.big{font-size:46px;font-weight:800;letter-spacing:-1.5px;line-height:1.05;margin:4px 0 14px}
+.bar{height:10px;border-radius:6px;background:rgba(127,160,165,.3);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--lag);border-radius:6px}
+.row3{display:flex;justify-content:space-between;margin-top:12px;font-size:14px}
+.row3 b{display:block;font-size:17px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;margin-top:14px}
+h2{font-size:17px;margin:0 0 10px}
+.tx{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+.tx:first-of-type{border-top:0}
+.tx .m{flex:1;min-width:0}.tx .m span{display:block;color:var(--mute);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.out{color:var(--out)}.inn{color:var(--in)}
+.del{background:none;border:0;color:var(--mute);font-size:18px;padding:4px 8px}
+input,select{font:inherit;width:100%;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);margin-bottom:10px}
+.seg{display:flex;gap:6px;margin-bottom:10px}
+.seg button{flex:1;padding:11px;border-radius:12px;border:1px solid var(--line);background:var(--bg)}
+.seg button.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.go{width:100%;padding:14px;border:0;border-radius:14px;background:var(--lag);color:#fff;font-weight:800;font-size:16px}
+.bl{margin-bottom:14px}.bl .h{display:flex;justify-content:space-between;font-size:14px;margin-bottom:5px}
+.bl input{margin:6px 0 0;padding:8px}
+.empty{color:var(--mute);padding:8px 0;font-size:14px}
+nav{position:fixed;left:0;right:0;bottom:0;display:flex;justify-content:center;gap:8px;padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));background:var(--bg);border-top:1px solid var(--line)}
+nav button{flex:1;max-width:170px;padding:12px;border-radius:14px;border:1px solid var(--line);background:var(--card);font-weight:600}
+nav button.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.cur{width:76px;padding:8px;margin:0;text-align:center}
+:focus-visible{outline:3px solid var(--lag);outline-offset:2px}
+</style>
+</head>
+<body>
+<main id="app"></main>
+<nav id="nav"></nav>
+<script>
+var OUT=["Food","Transport","Home","Bills","Fun","Health","Other"],INC=["Salary","Other income"];
+var S={cur:"MVR",tx:[],budgets:{}},tab="home",mon=new Date().toISOString().slice(0,7),form={type:"out"};
+try{var raw=localStorage.getItem("tidewise");if(raw)S=Object.assign(S,JSON.parse(raw))}catch(e){}
+function save(){try{localStorage.setItem("tidewise",JSON.stringify(S))}catch(e){}}
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+function fmt(n){return S.cur+" "+Math.round(n).toLocaleString()}
+function shift(d){var p=mon.split("-"),dt=new Date(+p[0],+p[1]-1+d,1);mon=dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0");render()}
+function label(){var p=mon.split("-");return new Date(+p[0],+p[1]-1,1).toLocaleDateString(undefined,{month:"long",year:"numeric"})}
+function mtx(){return S.tx.filter(function(t){return t.date.slice(0,7)===mon}).sort(function(a,b){return b.date.localeCompare(a.date)||b.id-a.id})}
+function render(){
+ var t=mtx(),inc=0,exp=0,by={};
+ t.forEach(function(x){if(x.type==="in")inc+=x.amt;else{exp+=x.amt;by[x.cat]=(by[x.cat]||0)+x.amt}});
+ var h='<div class="top"><h1>Tidewise</h1><div class="mo"><button class="ic" aria-label="Previous month" onclick="shift(-1)">‹</button><b>'+label()+'</b><button class="ic" aria-label="Next month" onclick="shift(1)">›</button></div></div>';
+ if(tab==="home"){
+  var left=inc-exp,pct=inc>0?Math.min(100,exp/inc*100):(exp>0?100:0);
+  h+='<div class="hero"><small>Left this month</small><div class="big">'+fmt(left)+'</div><div class="bar"><i style="width:'+pct+'%"></i></div><div class="row3"><span>Income<b>'+fmt(inc)+'</b></span><span style="text-align:right">Spent<b>'+fmt(exp)+'</b></span></div></div>';
+  h+='<div class="card"><h2>Transactions</h2>';
+  if(!t.length)h+='<div class="empty">Nothing yet this month. Tap Add to log your first entry.</div>';
+  t.forEach(function(x){h+='<div class="tx"><div class="m"><b>'+esc(x.cat)+'</b><span>'+x.date+(x.note?" · "+esc(x.note):"")+'</span></div><b class="'+(x.type==="in"?"inn":"out")+'">'+(x.type==="in"?"+":"−")+fmt(x.amt)+'</b><button class="del" aria-label="Delete" onclick="del('+x.id+')">×</button></div>'});
+  h+='</div>';
+ }else if(tab==="add"){
+  var cats=form.type==="in"?INC:OUT;
+  h+='<div class="card"><h2>Add entry</h2><div class="seg"><button class="'+(form.type==="out"?"on":"")+'" onclick="form.type=\'out\';render()">Expense</button><button class="'+(form.type==="in"?"on":"")+'" onclick="form.type=\'in\';render()">Income</button></div>'+
+  '<input id="amt" type="number" inputmode="decimal" placeholder="Amount ('+esc(S.cur)+')"><select id="cat">'+cats.map(function(c){return"<option>"+c+"</option>"}).join("")+'</select>'+
+  '<input id="note" placeholder="Note (optional)"><input id="date" type="date" value="'+new Date().toISOString().slice(0,10)+'"><button class="go" onclick="add()">Save entry</button></div>';
+ }else{
+  h+='<div class="card"><h2>Monthly limits</h2>';
+  OUT.forEach(function(c){var lim=S.budgets[c]||0,sp=by[c]||0,p=lim>0?Math.min(100,sp/lim*100):0,over=lim>0&&sp>lim;
+   h+='<div class="bl"><div class="h"><b>'+c+'</b><span class="'+(over?"out":"")+'">'+fmt(sp)+(lim?" of "+fmt(lim):"")+'</span></div><div class="bar" style="background:var(--line)"><i style="width:'+p+'%;background:'+(over?"var(--out)":"var(--lag)")+'"></i></div><input type="number" inputmode="decimal" placeholder="Set limit" value="'+(lim||"")+'" onchange="setB(\''+c+'\',this.value)"></div>'});
+  h+='</div><div class="card"><h2>Currency</h2><input class="cur" value="'+esc(S.cur)+'" maxlength="4" onchange="S.cur=this.value||\'MVR\';save();render()"></div>';
+ }
+ document.getElementById("app").innerHTML=h;
+ document.getElementById("nav").innerHTML=[["home","Overview"],["add","Add"],["limits","Limits"]].map(function(x){return'<button class="'+(tab===x[0]?"on":"")+'" onclick="tab=\''+x[0]+'\';render()">'+x[1]+'</button>'}).join("");
+}
+function add(){var a=parseFloat(document.getElementById("amt").value);if(!(a>0)){document.getElementById("amt").focus();return}
+ var d=document.getElementById("date").value||new Date().toISOString().slice(0,10);
+ S.tx.push({id:Date.now(),type:form.type,amt:a,cat:document.getElementById("cat").value,note:document.getElementById("note").value.trim(),date:d});
+ save();mon=d.slice(0,7);tab="home";render()}
+function del(id){S.tx=S.tx.filter(function(x){return x.id!==id});save();render()}
+function setB(c,v){S.budgets[c]=parseFloat(v)||0;save();render()}
+render();
+</script>
+</body>
+</html>
